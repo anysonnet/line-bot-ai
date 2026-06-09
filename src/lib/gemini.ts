@@ -1,4 +1,5 @@
 import { GoogleGenAI, Content } from '@google/genai';
+import { generateResponseOpenAI } from './openai-client';
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY ?? process.env.GOOGLE_AI_API_KEY ?? '',
@@ -69,7 +70,20 @@ export async function generateResponse(
 
     throw lastError;
   } catch (error: any) {
-    console.error(`Gemini fatal: status=${error?.status} code=${error?.code} msg=${error?.message}`);
+    console.error(`Gemini fatal: status=${error?.status} msg=${error?.message}`);
+
+    // Fallback to OpenAI if key is available
+    if (process.env.OPENAI_API_KEY) {
+      try {
+        const systemWithContext = hotelContext
+          ? `${SYSTEM_PROMPT}\n\nข้อมูลเพิ่มเติมของโรงแรม:\n${hotelContext}`
+          : SYSTEM_PROMPT;
+        return await generateResponseOpenAI(message, systemWithContext);
+      } catch (oaiErr: any) {
+        console.error('OpenAI fallback error:', oaiErr?.message);
+      }
+    }
+
     return 'ขออภัยค่ะ ระบบขัดข้องชั่วคราว กรุณาติดต่อเจ้าหน้าที่ที่ ' + (process.env.HOTEL_PHONE ?? '');
   }
 }
