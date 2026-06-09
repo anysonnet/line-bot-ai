@@ -37,27 +37,33 @@ export async function generateResponse(
       ? `${SYSTEM_PROMPT}\n\nข้อมูลเพิ่มเติมของโรงแรม:\n${hotelContext}`
       : SYSTEM_PROMPT;
 
-    const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-latest'];
+    // gemini-1.5-flash has higher free-tier quota than 2.0-flash
+    const models = ['gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-2.0-flash'];
     let lastError: unknown;
 
     for (const model of models) {
-      try {
-        const response = await ai.models.generateContent({
-          model,
-          config: {
-            systemInstruction: systemWithContext,
-            temperature: 0.7,
-            maxOutputTokens: 512,
-          },
-          contents: [
-            ...history,
-            { role: 'user', parts: [{ text: message }] },
-          ],
-        });
-        return response.text ?? 'ขออภัยค่ะ ไม่สามารถตอบได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง 🙏';
-      } catch (err: any) {
-        lastError = err;
-        console.error(`Gemini [${model}] status=${err?.status} code=${err?.code} msg=${err?.message}`);
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          if (attempt > 0) await new Promise((r) => setTimeout(r, 1500));
+          const response = await ai.models.generateContent({
+            model,
+            config: {
+              systemInstruction: systemWithContext,
+              temperature: 0.7,
+              maxOutputTokens: 512,
+            },
+            contents: [
+              ...history,
+              { role: 'user', parts: [{ text: message }] },
+            ],
+          });
+          return response.text ?? 'ขออภัยค่ะ ไม่สามารถตอบได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง 🙏';
+        } catch (err: any) {
+          lastError = err;
+          console.error(`Gemini [${model}] attempt=${attempt} status=${err?.status} msg=${err?.message}`);
+          // Only retry on 429 (rate limit); break immediately on auth/not-found errors
+          if (err?.status !== 429) break;
+        }
       }
     }
 
