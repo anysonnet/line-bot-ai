@@ -1,6 +1,6 @@
 import type { MessageEvent } from '@line/bot-sdk';
 import { getLineClient, buildTextMessage } from '@/lib/line';
-import { generateResponse } from '@/lib/gemini';
+import { generateResponse } from '@/lib/ai';
 import { getHotelContext } from '@/lib/notion';
 import { getFAQsFromSheet, buildFAQContext } from '@/lib/sheets-faq';
 import { getSession } from '@/lib/session';

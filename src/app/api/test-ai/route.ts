@@ -1,26 +1,23 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenAI } from '@google/genai';
+import Anthropic from '@anthropic-ai/sdk';
 
 export const runtime = 'nodejs';
 
 export async function GET() {
-  const apiKey = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_AI_API_KEY ?? '';
-  if (!apiKey) return NextResponse.json({ error: 'No Gemini API key set' }, { status: 500 });
+  const apiKey = process.env.ANTHROPIC_API_KEY ?? '';
+  if (!apiKey) return NextResponse.json({ error: 'ANTHROPIC_API_KEY not set' }, { status: 500 });
 
-  const keyInfo = {
-    length: apiKey.length,
-    prefix: apiKey.slice(0, 6),
-    suffix: apiKey.slice(-4),
-  };
-
-  const ai = new GoogleGenAI({ apiKey });
+  const keyInfo = { length: apiKey.length, prefix: apiKey.slice(0, 7) };
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: [{ role: 'user', parts: [{ text: 'Reply with "OK" only.' }] }],
+    const client = new Anthropic({ apiKey });
+    const response = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 20,
+      messages: [{ role: 'user', content: 'Reply with "OK" only.' }],
     });
-    return NextResponse.json({ ok: true, model: 'gemini-2.0-flash', text: response.text, keyInfo });
+    const text = response.content[0].type === 'text' ? response.content[0].text : '';
+    return NextResponse.json({ ok: true, model: 'claude-haiku-4-5', text, keyInfo });
   } catch (err: any) {
     return NextResponse.json({ ok: false, status: err?.status, message: err?.message?.slice(0, 200), keyInfo });
   }
