@@ -7,6 +7,12 @@ export async function GET() {
   const apiKey = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_AI_API_KEY ?? '';
   if (!apiKey) return NextResponse.json({ error: 'No Gemini API key set' }, { status: 500 });
 
+  const keyInfo = {
+    length: apiKey.length,
+    prefix: apiKey.slice(0, 6),
+    suffix: apiKey.slice(-4),
+  };
+
   const ai = new GoogleGenAI({ apiKey });
 
   try {
@@ -14,8 +20,8 @@ export async function GET() {
       model: 'gemini-2.0-flash',
       contents: [{ role: 'user', parts: [{ text: 'Reply with "OK" only.' }] }],
     });
-    return NextResponse.json({ ok: true, model: 'gemini-2.0-flash', text: response.text });
+    return NextResponse.json({ ok: true, model: 'gemini-2.0-flash', text: response.text, keyInfo });
   } catch (err: any) {
-    return NextResponse.json({ ok: false, status: err?.status, message: err?.message?.slice(0, 200) });
+    return NextResponse.json({ ok: false, status: err?.status, message: err?.message?.slice(0, 200), keyInfo });
   }
 }
