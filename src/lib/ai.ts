@@ -1,10 +1,13 @@
-import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 
-let client: Anthropic | null = null;
+let client: OpenAI | null = null;
 
-function getClient(): Anthropic {
+function getClient(): OpenAI {
   if (!client) {
-    client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+    client = new OpenAI({
+      apiKey: process.env.OPENCODE_API_KEY!,
+      baseURL: 'https://opencode.ai/zen/go/v1',
+    });
   }
   return client;
 }
@@ -36,21 +39,22 @@ export async function generateResponse(
   hotelContext: string = ''
 ): Promise<string> {
   try {
-    const system = hotelContext
+    const systemContent = hotelContext
       ? `${SYSTEM_PROMPT}\n\nข้อมูลเพิ่มเติมของโรงแรม:\n${hotelContext}`
       : SYSTEM_PROMPT;
 
-    const response = await getClient().messages.create({
-      model: 'claude-haiku-4-5-20251001',
+    const response = await getClient().chat.completions.create({
+      model: 'deepseek-v4-flash',
       max_tokens: 512,
-      system,
-      messages: [{ role: 'user', content: message }],
+      messages: [
+        { role: 'system', content: systemContent },
+        { role: 'user', content: message },
+      ],
     });
 
-    const block = response.content[0];
-    return block.type === 'text' ? block.text : 'ขออภัยค่ะ ไม่สามารถตอบได้ในขณะนี้ 🙏';
+    return response.choices[0]?.message?.content ?? 'ขออภัยค่ะ ไม่สามารถตอบได้ในขณะนี้ 🙏';
   } catch (error: any) {
-    console.error(`Claude error: status=${error?.status} msg=${error?.message}`);
+    console.error(`OpenCode error: status=${error?.status} msg=${error?.message}`);
     return 'ขออภัยค่ะ ระบบขัดข้องชั่วคราว กรุณาติดต่อเจ้าหน้าที่ที่ ' + (process.env.HOTEL_PHONE ?? '');
   }
 }
