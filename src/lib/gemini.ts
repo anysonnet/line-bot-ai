@@ -1,6 +1,8 @@
 import { GoogleGenAI, Content } from '@google/genai';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY! });
+const ai = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY ?? process.env.GOOGLE_AI_API_KEY ?? '',
+});
 
 const SYSTEM_PROMPT = `คุณคือผู้ช่วย AI ของ ${process.env.HOTEL_NAME ?? 'Life Hotel'} ช่วยลูกค้าผ่าน LINE Official Account
 

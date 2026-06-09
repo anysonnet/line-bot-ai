@@ -2,12 +2,11 @@ import type { MessageEvent } from '@line/bot-sdk';
 import { getLineClient, buildTextMessage } from '@/lib/line';
 import { generateResponse } from '@/lib/gemini';
 import { getHotelContext } from '@/lib/notion';
+import { getFAQsFromSheet, buildFAQContext } from '@/lib/sheets-faq';
 import { getSession } from '@/lib/session';
 import { startBookingFlow, handleBookingStep } from './booking';
 
 const BOOKING_KEYWORDS = ['จอง', 'จองห้อง', 'ต้องการจอง', 'อยากจอง', 'book', 'booking', 'reserve'];
-const ROOM_INFO_KEYWORDS = ['ห้องพัก', 'ห้อง', 'ราคา', 'price', 'room'];
-const FACILITY_KEYWORDS = ['สิ่งอำนวย', 'บริการ', 'facility', 'facilities', 'สระว่ายน้ำ', 'ร้านอาหาร', 'ฟิตเนส'];
 
 export async function handleTextMessage(event: MessageEvent): Promise<void> {
   if (event.message.type !== 'text') return;
@@ -18,7 +17,6 @@ export async function handleTextMessage(event: MessageEvent): Promise<void> {
   const replyToken = event.replyToken;
   const client = getLineClient();
 
-  // Show loading animation while processing
   try {
     await client.showLoadingAnimation({ chatId: userId, loadingSeconds: 5 });
   } catch {
@@ -37,16 +35,14 @@ export async function handleTextMessage(event: MessageEvent): Promise<void> {
     return startBookingFlow(replyToken, userId);
   }
 
-  // Fetch hotel context for better AI responses
-  let context = '';
-  if (
-    ROOM_INFO_KEYWORDS.some((kw) => lowerText.includes(kw)) ||
-    FACILITY_KEYWORDS.some((kw) => lowerText.includes(kw))
-  ) {
-    context = await getHotelContext(text);
-  }
+  // Build context: FAQ from Google Sheet + room data from Notion (fallback)
+  const [faqs, hotelContext] = await Promise.all([
+    getFAQsFromSheet(),
+    getHotelContext(text),
+  ]);
+  const faqContext = buildFAQContext(faqs, text);
+  const context = [faqContext, hotelContext].filter(Boolean).join('\n\n');
 
-  // AI response via Gemini
   const response = await generateResponse(text, context);
 
   await client.replyMessage({
