@@ -37,22 +37,33 @@ export async function generateResponse(
       ? `${SYSTEM_PROMPT}\n\nข้อมูลเพิ่มเติมของโรงแรม:\n${hotelContext}`
       : SYSTEM_PROMPT;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
-      config: {
-        systemInstruction: systemWithContext,
-        temperature: 0.7,
-        maxOutputTokens: 512,
-      },
-      contents: [
-        ...history,
-        { role: 'user', parts: [{ text: message }] },
-      ],
-    });
+    const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-latest'];
+    let lastError: unknown;
 
-    return response.text ?? 'ขออภัยค่ะ ไม่สามารถตอบได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง 🙏';
+    for (const model of models) {
+      try {
+        const response = await ai.models.generateContent({
+          model,
+          config: {
+            systemInstruction: systemWithContext,
+            temperature: 0.7,
+            maxOutputTokens: 512,
+          },
+          contents: [
+            ...history,
+            { role: 'user', parts: [{ text: message }] },
+          ],
+        });
+        return response.text ?? 'ขออภัยค่ะ ไม่สามารถตอบได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง 🙏';
+      } catch (err) {
+        lastError = err;
+        console.error(`Gemini [${model}] error:`, JSON.stringify(err, Object.getOwnPropertyNames(err as object)));
+      }
+    }
+
+    throw lastError;
   } catch (error) {
-    console.error('Gemini error:', error);
+    console.error('Gemini fatal:', JSON.stringify(error, Object.getOwnPropertyNames(error as object)));
     return 'ขออภัยค่ะ ระบบขัดข้องชั่วคราว กรุณาติดต่อเจ้าหน้าที่ที่ ' + (process.env.HOTEL_PHONE ?? '');
   }
 }
