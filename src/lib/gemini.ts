@@ -55,15 +55,15 @@ export async function generateResponse(
           ],
         });
         return response.text ?? 'ขออภัยค่ะ ไม่สามารถตอบได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง 🙏';
-      } catch (err) {
+      } catch (err: any) {
         lastError = err;
-        console.error(`Gemini [${model}] error:`, JSON.stringify(err, Object.getOwnPropertyNames(err as object)));
+        console.error(`Gemini [${model}] status=${err?.status} code=${err?.code} msg=${err?.message}`);
       }
     }
 
     throw lastError;
-  } catch (error) {
-    console.error('Gemini fatal:', JSON.stringify(error, Object.getOwnPropertyNames(error as object)));
+  } catch (error: any) {
+    console.error(`Gemini fatal: status=${error?.status} code=${error?.code} msg=${error?.message}`);
     return 'ขออภัยค่ะ ระบบขัดข้องชั่วคราว กรุณาติดต่อเจ้าหน้าที่ที่ ' + (process.env.HOTEL_PHONE ?? '');
   }
 }
